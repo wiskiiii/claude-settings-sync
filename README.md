@@ -34,11 +34,24 @@ bash <(curl -fsSL https://raw.githubusercontent.com/wiskiiii/claude-settings-syn
 model effortLevel modelSettings enabledPlugins extraKnownMarketplaces hooks
 ```
 
-在脚本顶部的 `BLACKLIST` 里修改，用空格或换行分隔：
+运行时用参数在默认黑名单上增减，两个参数都可以重复使用，一次也可以写多个（空格或逗号分隔）：
+
+```bash
+... upload --url ... --user ... --pass ... --add 'theme,env.ANTHROPIC_*' --remove hooks
+```
+
+- `--add`：增加字段
+- `--remove`：去掉字段，按写法精确匹配（`--remove env.ANTHROPIC_*` 才能去掉 `env.ANTHROPIC_*`）；同一字段同时出现在两边时以 `--remove` 为准
+- 用了增减参数时会打印本次实际使用的黑名单
+- 上传和下载要用同样的增减参数，否则两边过滤的字段不一致
+
+字段写法：
 
 - 顶层键直接写，如 `theme`
 - 嵌套键写成 `父键.子键`，如 `env.ANTHROPIC_API_KEY`
 - `*` 匹配任意字符，如 `env.ANTHROPIC_*`
+
+也可以直接改脚本顶部的 `BLACKLIST`（空格或换行分隔）。
 
 ## 注意
 

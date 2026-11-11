@@ -13,26 +13,44 @@ REMOTE_NAME="claude-settings.json"
 usage() {
   cat <<'USAGE'
 用法: claude-sync.sh <upload|download> --url <WebDAV 目录> --user <用户名> --pass <密码>
+                      [--add <字段>] [--remove <字段>]
 
   upload    过滤黑名单字段后，上传本机 settings.json
   download  下载远端配置写入本机，本机的黑名单字段保持不变
+
+  --add     在默认黑名单上增加字段
+  --remove  从默认黑名单中去掉字段
+            两者都可重复使用，一次也可写多个（空格或逗号分隔）
 USAGE
   exit 2
 }
 
 MODE="${1:-}"; [ "$MODE" = upload ] || [ "$MODE" = download ] || usage; shift
-URL=""; USER_NAME=""; PASS=""
+URL=""; USER_NAME=""; PASS=""; ADD=""; DEL=""
 while [ $# -gt 0 ]; do
+  [ $# -ge 2 ] || usage
   case "$1" in
-    --url) URL="${2:-}"; shift 2 ;;
-    --user) USER_NAME="${2:-}"; shift 2 ;;
-    --pass) PASS="${2:-}"; shift 2 ;;
+    --url) URL="$2" ;;
+    --user) USER_NAME="$2" ;;
+    --pass) PASS="$2" ;;
+    --add) ADD="$ADD $2" ;;
+    --remove) DEL="$DEL $2" ;;
     *) usage ;;
   esac
+  shift 2
 done
 [ -n "$URL" ] && [ -n "$USER_NAME" ] && [ -n "$PASS" ] || usage
 
 for c in curl jq diff; do command -v "$c" >/dev/null || { echo "缺少 $c"; exit 1; }; done
+
+# 按 --add / --remove 调整黑名单
+if [ -n "$ADD$DEL" ]; then
+  bl() { jq -rn --arg bl "$BLACKLIST" --arg add "$ADD" --arg del "$DEL" \
+    'def words($s): [$s | splits("[\\s,]+") | select(length > 0)]; '"$1"; }
+  while IFS= read -r f; do echo "黑名单里没有 ${f}，忽略"; done < <(bl '(words($del) - words($bl) - words($add))[]')
+  BLACKLIST=$(bl '(words($bl) + (words($add) - words($bl))) - words($del) | join(" ")')
+  echo "本次黑名单：$BLACKLIST"
+fi
 
 LIB='
 def re: "^" + gsub("\\*"; ".*") + "$";
