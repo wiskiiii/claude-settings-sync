@@ -94,7 +94,9 @@ fetch() {
 confirm() {
   if diff -q <(jq -S . "$1") <(jq -S . "$2") >/dev/null; then echo "没有变化"; exit 0; fi
   echo "---- $3的变更 ----"
-  diff -u <(jq -S . "$1") <(jq -S . "$2") | tail -n +3 || true
+  diff -u <(jq -S . "$1") <(jq -S . "$2") | tail -n +3 | if [ -t 1 ]; then
+    sed -e $'s/^-.*/\033[31m&\033[0m/' -e $'s/^+.*/\033[32m&\033[0m/' -e $'s/^@@.*/\033[36m&\033[0m/'
+  else cat; fi || true
   local ok
   read -rp "确认写入$3？[y/N] " ok </dev/tty
   [ "$ok" = y ] || [ "$ok" = Y ] || { echo "已取消"; exit 0; }
